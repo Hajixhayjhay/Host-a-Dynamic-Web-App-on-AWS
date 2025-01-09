@@ -130,40 +130,50 @@ Database migration was successfully accomplished using Flyway, an open-source to
 The following script was used for migrating the database:
 
 ```bash
-# Flyway Database Migration Script
-#!/bin/bash
+# Database Migration Script
+S3_URI=s3://aj-sql-files/V1__shopwise.sql
+RDS_ENDPOINT=dev-rds-db.cly0s66mui79.us-east-1.rds.amazonaws.com
+RDS_DB_NAME=applicationdb
+RDS_DB_USERNAME=Hajarat
+RDS_DB_PASSWORD=busola09
 
-# Set environment variables for Flyway
-FLYWAY_URL="jdbc:mysql://<your-database-url>:3306/<your-database-name>"
-FLYWAY_USER="<your-database-username>"
-FLYWAY_PASSWORD="<your-database-password>"
+# Update all packages
+sudo yum update -y
 
-# Download Flyway if not already installed
-if [ ! -f "flyway-commandline-<version>.tar.gz" ]; then
-  wget https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/<version>/flyway-commandline-<version>.tar.gz
-  tar -xzf flyway-commandline-<version>.tar.gz
-  export PATH=$PATH:$PWD/flyway-<version>/flyway
-fi
+# Download and extract Flyway
+sudo wget -qO- https://download.red-gate.com/maven/release/com/redgate/flyway/flyway-commandline/10.9.1/flyway-commandline-10.9.1-linux-x64.tar.gz | tar -xvz 
+
+# Create a symbolic link to make Flyway accessible globally
+sudo ln -s $(pwd)/flyway-10.9.1/flyway /usr/local/bin
+
+# Create the SQL directory for migrations
+sudo mkdir sql
+
+# Download the migration SQL script from AWS S3
+sudo aws s3 cp "$S3_URI" sql/
 
 # Run Flyway migration
-flyway -url=$FLYWAY_URL -user=$FLYWAY_USER -password=$FLYWAY_PASSWORD migrate
+flyway -url=jdbc:mysql://"$RDS_ENDPOINT":3306/"$RDS_DB_NAME" \
+  -user="$RDS_DB_USERNAME" \
+  -password="$RDS_DB_PASSWORD" \
+  -locations=filesystem:sql \
+  migrate
 ```
 
-### Explanation of Flyway Migration Steps
+### Explanation of Migration Process
 
-1. **Environment Variables**: I set the Flyway environment variables, including the `FLYWAY_URL` for the database connection, along with `FLYWAY_USER` and `FLYWAY_PASSWORD` for authentication.
+1. **Setting Environment Variables**: I set the necessary environment variables, including `S3_URI` for the SQL migration file, `RDS_ENDPOINT` for the database connection, and `RDS_DB_USERNAME` and `RDS_DB_PASSWORD` for authentication.
+2. **Installing Flyway**: I downloaded and extracted the Flyway command-line tool and created a symbolic link to make it globally accessible.
+3. **Creating the SQL Directory**: I created a directory called `sql` to store the migration scripts.
+4. **Downloading the Migration Script**: The SQL migration script `V1__shopwise.sql` was downloaded from the specified S3 bucket to the `sql` directory.
+5. **Running Flyway Migration**: I ran the Flyway migration command, which connected to the RDS MySQL database and applied the migration script to update the database schema.
 
-2. **Flyway Installation**: The script verified whether Flyway was already downloaded. If not, it downloaded the Flyway command-line tool and extracted it. The PATH environment variable was updated to include the Flyway executable.
-
-3. **Database Migration Execution**: The `flyway migrate` command was executed using the provided connection details, ensuring all pending migration scripts from the `sql` directory were applied to the target database.
-
-4. **Migration Scripts**: The required SQL migration scripts were placed in a designated `sql` directory and executed in sequential order (e.g., `V1__initial_setup.sql`, `V2__add_users_table.sql`) to maintain consistency and data integrity.
-
-By following this migration process, the database schema was successfully updated to support the dynamic website hosted on AWS.
+This process ensured that the database schema was successfully migrated and aligned with the application's requirements.
 
 ## Contributing
 
 Contributions to this project are welcome. If you encounter any issues or have suggestions for improvements, feel free to open an issue or submit a pull request in the GitHub repository.
+
 
 
 
